@@ -22,11 +22,17 @@ public abstract class BaseTest {
         boolean isHeadless = Boolean.parseBoolean(headless) || FrameworkConstants.HEADLESS;
 
         driver = DriverFactory.initDriver(chosenBrowser, isHeadless);
+        try {
+            driver.manage().window().maximize();
+        } catch (Exception ignored) {}
         driver.get(FrameworkConstants.APP_URL);
     }
 
     @AfterClass(alwaysRun = true)
     public void tearDownClass() {
+        try {
+            Thread.sleep(1000); // Giữ cửa sổ 1 giây để người xem quan sát kết quả trước khi đóng class
+        } catch (InterruptedException ignored) {}
         DriverFactory.quitDriver();
     }
 

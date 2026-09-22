@@ -9,7 +9,7 @@ import java.util.List;
 public class CrmPage extends BasePage {
 
     private final By pageTitle = By.xpath("//h1[contains(., 'CRM') or contains(., 'Chăm Sóc')]");
-    private final By remindButtons = By.xpath("//button[contains(., 'Gửi Remind Zalo') or contains(., 'Đã Gửi SMS')]");
+    private final By remindButtons = By.xpath("//button[contains(., 'Gửi Remind Zalo') or contains(., 'Đã Gửi SMS') or contains(., 'Gửi')]");
 
     public CrmPage(WebDriver driver) {
         super(driver);
@@ -21,8 +21,8 @@ public class CrmPage extends BasePage {
 
     public void clickFirstReminder() {
         List<WebElement> buttons = findElements(remindButtons);
-        if (!buttons.isEmpty() && buttons.get(0).isEnabled()) {
-            buttons.get(0).click();
+        if (!buttons.isEmpty()) {
+            click(remindButtons);
             sleep(400);
         }
     }
