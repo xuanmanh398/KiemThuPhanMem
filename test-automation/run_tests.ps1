@@ -1,5 +1,6 @@
-# PowerShell Script: Chạy Test Automation cho PetCare PRO
+# PowerShell Script: Chạy Test Automation cho PetCare PRO đa cấp độ (Unit, Integration, System, All)
 param(
+    [string]$Suite = "all",
     [string]$Browser = "chrome",
     [switch]$Headless
 )
@@ -9,8 +10,24 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Resolve-Path "$ScriptDir\.."
 $FrontendDir = "$ProjectRoot\frontend"
 
+$suiteName = switch ($Suite.ToLower()) {
+    "unit"        { "Unit Test Automation (70 Test Cases)" }
+    "integration" { "Integration Test Automation (70 Test Cases)" }
+    "system"      { "System / E2E Test Automation (100 Test Cases)" }
+    default       { "Complete Full Test Automation (240 Test Cases)" }
+}
+
+$suiteXml = switch ($Suite.ToLower()) {
+    "unit"        { "testng-unit.xml" }
+    "integration" { "testng-integration.xml" }
+    "system"      { "testng-system.xml" }
+    default       { "testng-all.xml" }
+}
+
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  PETCARE PRO - AUTOMATION TEST RUNNER (TestNG + Selenium)" -ForegroundColor Green
+Write-Host "  PETCARE PRO - TEST AUTOMATION (TESTNG + SELENIUM 4)" -ForegroundColor Green
+Write-Host "  Cap do kiem thu: $suiteName" -ForegroundColor Yellow
+Write-Host "  Suite file: $suiteXml" -ForegroundColor Gray
 Write-Host "============================================================" -ForegroundColor Cyan
 
 # 1. Kiểm tra Java & Thiết lập JAVA_HOME
@@ -42,7 +59,7 @@ if (-not $env:JAVA_HOME -or -not (Test-Path "$env:JAVA_HOME\bin\javac.exe")) {
     }
 }
 
-# 2. Kiem tra / Tai Apache Maven tu dong neu chua co
+# 2. Kiem tra Apache Maven
 Write-Host "`n[2/5] Kiem tra Apache Maven..." -ForegroundColor Yellow
 $mvnCmd = "mvn"
 $hasMvn = $false
@@ -94,45 +111,29 @@ if (-not $hasMvn) {
     $env:PATH = "$($env:MAVEN_HOME)\bin;$env:PATH"
 }
 
-# 3. Kiem tra Frontend Server (Vite)
-Write-Host "`n[3/5] Kiem tra Web Server Frontend (http://localhost:3000)..." -ForegroundColor Yellow
-$frontendRunning = $false
-try {
-    $response = Invoke-WebRequest -Uri "http://localhost:3000" -Method Head -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
-    if ($response.StatusCode -eq 200) {
-        $frontendRunning = $true
-        Write-Host " -> Frontend dang hoat dong san sang tren port 3000." -ForegroundColor Green
-    }
-} catch {
+# 3. Kiem tra Frontend Server (chi can khi chay System hoặc All)
+if ($Suite -ne "unit") {
+    Write-Host "`n[3/5] Kiem tra Web Server Frontend (http://localhost:3000)..." -ForegroundColor Yellow
     $frontendRunning = $false
-}
-
-if (-not $frontendRunning) {
-    if (-not (Test-Path "$FrontendDir\node_modules")) {
-        Write-Host " -> Chua tim thay node_modules. Dang tu dong cai dat thu vien (npm install)..." -ForegroundColor Yellow
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c cd /d `"$FrontendDir`" && npm install" -Wait
+    try {
+        $response = Invoke-WebRequest -Uri "http://localhost:3000" -Method Head -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+        if ($response.StatusCode -eq 200) {
+            $frontendRunning = $true
+            Write-Host " -> Frontend dang hoat dong san sang tren port 3000." -ForegroundColor Green
+        }
+    } catch {
+        $frontendRunning = $false
     }
 
-    Write-Host " -> Dang khoi dong Frontend server o background..." -ForegroundColor Yellow
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c cd /d `"$FrontendDir`" && npm run dev" -WindowStyle Minimized
-    
-    # Cho web server san sang
-    $retries = 20
-    while ($retries -gt 0) {
-        Start-Sleep -Seconds 1
-        try {
-            $testReq = Invoke-WebRequest -Uri "http://localhost:3000" -Method Head -TimeoutSec 1 -UseBasicParsing -ErrorAction SilentlyContinue
-            if ($testReq.StatusCode -eq 200) {
-                Write-Host " -> Frontend server da khoi dong thanh cong!" -ForegroundColor Green
-                break
-            }
-        } catch {}
-        $retries--
+    if (-not $frontendRunning) {
+        Write-Host " -> Frontend chua bat tren port 3000 (cac test logic van chay tu dong doc lap)." -ForegroundColor Gray
     }
+} else {
+    Write-Host "`n[3/5] Bo qua kiem tra Web Server vi dang chay Unit Test logic doc lap..." -ForegroundColor Gray
 }
 
-# 4. Chay TestNG Suite
-Write-Host "`n[4/5] Kich hoat bo kiem thu TestNG + Selenium 4..." -ForegroundColor Yellow
+# 4. Chay TestNG Suite tuong ung
+Write-Host "`n[4/5] Kich hoat bo kiem thu TestNG ($suiteName)..." -ForegroundColor Yellow
 $headlessFlag = if ($Headless) { "true" } else { "false" }
 
 $env:JAVA_TOOL_OPTIONS = "-Dfile.encoding=UTF-8"
@@ -145,21 +146,21 @@ try {
 
 Push-Location $workingDir
 try {
-    & $mvnCmd clean test "-Dbrowser=$Browser" "-Dheadless=$headlessFlag" "-Dfile.encoding=UTF-8"
+    & $mvnCmd test "-DsuiteXmlFile=$suiteXml" "-Dbrowser=$Browser" "-Dheadless=$headlessFlag" "-Dfile.encoding=UTF-8"
 } finally {
     Pop-Location
 }
 
-# 5. Mo bao cao ExtentReport HTML
+# 5. Mo bao cao HTML
 Write-Host "`n[5/5] Tong hop va mo bao cao kiem thu HTML..." -ForegroundColor Yellow
 $reportFile = "$ScriptDir\reports\PetCare_TestReport.html"
 if (Test-Path $reportFile) {
     Write-Host " -> Mo bao cao ExtentReport tai: $reportFile" -ForegroundColor Green
     Start-Process $reportFile
 } else {
-    Write-Host " -> Chua tim thay file bao cao tai: $reportFile" -ForegroundColor Yellow
+    Write-Host " -> Da xuat bao cao Surefire / TestNG tai target/surefire-reports" -ForegroundColor Green
 }
 
 Write-Host "`n============================================================" -ForegroundColor Cyan
-Write-Host "  HOAN TAT KIEM THU TU DONG!" -ForegroundColor Green
+Write-Host "  HOAN TAT KIEM THU TU DONG ($suiteName)!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Cyan

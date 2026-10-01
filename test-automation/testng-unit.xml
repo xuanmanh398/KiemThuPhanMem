@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="PetCare PRO - Unit Test Automation Suite (70 Test Cases)" verbose="2" parallel="classes" thread-count="1">
+    <listeners>
+        <listener class-name="com.petcare.automation.utils.ExtentReportListener"/>
+    </listeners>
+    <test name="Unit Test Cases (70 Tests)">
+        <classes>
+            <class name="com.petcare.automation.tests.unit.AuthServiceUnitTest"/>
+            <class name="com.petcare.automation.tests.unit.CustomerStoreUnitTest"/>
+            <class name="com.petcare.automation.tests.unit.PetStoreUnitTest"/>
+            <class name="com.petcare.automation.tests.unit.ProductStoreUnitTest"/>
+            <class name="com.petcare.automation.tests.unit.ServiceStoreUnitTest"/>
+            <class name="com.petcare.automation.tests.unit.PosOrderStoreUnitTest"/>
+            <class name="com.petcare.automation.tests.unit.AppointmentStoreUnitTest"/>
+        </classes>
+    </test>
+</suite>
